@@ -1,0 +1,9 @@
+plank
+git
+curl
+wget
+vim
+htop
+neofetch
+vlc
+gnome-tweaks
