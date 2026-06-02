@@ -32,7 +32,7 @@ Default wake word:
   atomeos
 
 Recognition hint:
-  Say it like "atom OS". Internally the recognizer listens for "atom".
+  Say "atomeos" or pronounce it like "atom OS".
 EOF
 }
 
@@ -193,7 +193,7 @@ start_voice() {
 
     nohup atome-voice run >>"$LOG_FILE" 2>&1 &
     echo "$!" >"$PID_FILE"
-    echo "Assistant vocal actif. Dites: $WAKE_WORD"
+    echo "Assistant vocal actif. Dites: $WAKE_WORD ou atom OS"
 }
 
 enable_voice() {
@@ -229,9 +229,9 @@ force_stop_voice() {
 status_voice() {
     if is_running || has_voice_process; then
         if [ -f "$ENABLE_FILE" ]; then
-            echo "Assistant vocal actif et active au demarrage. Dites: $WAKE_WORD"
+            echo "Assistant vocal actif et active au demarrage. Dites: $WAKE_WORD ou atom OS"
         else
-            echo "Assistant vocal actif pour cette session seulement. Dites: $WAKE_WORD"
+            echo "Assistant vocal actif pour cette session seulement. Dites: $WAKE_WORD ou atom OS"
         fi
     else
         if [ -f "$ENABLE_FILE" ]; then
@@ -250,7 +250,7 @@ autostart_voice() {
 run_voice() {
     mkdir -p "$PID_DIR"
     local armed=0
-    echo "AtomeOS voice assistant started. Wake word: $WAKE_WORD. Say: atom OS, then a command."
+    echo "AtomeOS voice assistant started. Wake word: $WAKE_WORD. Say: atomeos or atom OS, then a command."
     say "AtomeOS voice assistant is ready."
 
     full_recognizer | while IFS= read -r line; do
@@ -291,7 +291,7 @@ debug_voice() {
         echo "arecord absent. Installez alsa-utils."
     fi
     echo
-    echo "[3] Ecoute directe. Dites: atom OS"
+    echo "[3] Ecoute directe. Dites: atomeos ou atom OS"
     echo "Quand le mot est detecte, dites ensuite: open chrome"
     echo "Appuyez sur Ctrl+C pour arreter."
     local armed=0

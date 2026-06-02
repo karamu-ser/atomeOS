@@ -47,7 +47,7 @@ run_gui() {
             --text="Smart by default, private by design." \
             --column="Action" --column="Description" \
             "Assistant local" "Poser une question avec Ollama" \
-            "Assistant vocal" "Demarrer ou arreter l'ecoute locale: atomeos" \
+            "Assistant vocal" "Ecoute locale: dites atomeos ou atom OS" \
             "Mode simple" "Profil leger pour usage quotidien" \
             "Mode dev" "Active VS Code, outils dev, terminal ameliore et Docker" \
             "Profil Student" "Outils pour etudes et documents" \

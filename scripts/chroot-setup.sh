@@ -21,7 +21,11 @@ mkdir -p /usr/share/backgrounds/atomeos
 
 echo "[+] Copy overlay if present"
 if [ -d /tmp/overlay ]; then
-    rsync -a /tmp/overlay/ /
+    if command -v rsync >/dev/null 2>&1; then
+        rsync -a /tmp/overlay/ /
+    else
+        cp -a /tmp/overlay/. /
+    fi
 fi
 
 echo "[+] Configure GNOME defaults"

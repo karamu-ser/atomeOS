@@ -42,7 +42,7 @@ if command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" 
         atome-ai ask "Dis bonjour et presente AtomeOS en deux phrases." | zenity --text-info --title="Assistant Atome" --width=720 --height=420 || true
     fi
 
-    voice_choice="$(zenity --question --title="$TITLE" --text="Activer l'assistant vocal local ?\nQuand vous dites: atomeos\nIl repond: How can I help you?" 2>/dev/null; echo $?)"
+    voice_choice="$(zenity --question --title="$TITLE" --text="Activer l'assistant vocal local ?\nDites: atomeos ou atom OS\nIl repond: How can I help you?" 2>/dev/null; echo $?)"
     if [ "$voice_choice" = "0" ]; then
         atome-voice enable || true
     fi
