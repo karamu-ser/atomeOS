@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Assistant vocal AtomeOS
+Comment=Listen locally for the AtomeOS wake word
+Exec=atome-voice start
+Icon=audio-input-microphone
+Terminal=false
+Categories=Utility;Audio;

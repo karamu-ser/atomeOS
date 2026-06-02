@@ -1,0 +1,11 @@
+[org.gnome.desktop.background]
+picture-uri='file:///usr/share/backgrounds/atomeos/default.png'
+picture-uri-dark='file:///usr/share/backgrounds/atomeos/default.png'
+picture-options='zoom'
+primary-color='#111827'
+secondary-color='#0f766e'
+
+[org.gnome.desktop.screensaver]
+picture-uri='file:///usr/share/backgrounds/atomeos/default.png'
+primary-color='#111827'
+secondary-color='#0f766e'

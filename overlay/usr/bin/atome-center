@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TITLE="Centre Atome"
+WALLPAPER="/usr/share/backgrounds/atomeos/default.png"
+
+has_gui() {
+    command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]
+}
+
+info_text() {
+    local release="/etc/atomeos-release"
+    if [ -f "$release" ]; then
+        cat "$release"
+    else
+        echo 'NAME="AtomeOS"'
+        echo 'VERSION="dev"'
+        echo 'SLOGAN="Smart by default, private by design."'
+    fi
+    echo
+    echo "Kernel: $(uname -r)"
+    echo "CPU: $(nproc) coeur(s)"
+    echo "RAM: $(free -h | awk '/Mem:/ {print $2}')"
+    echo "Disk /: $(df -h / | awk 'NR==2 {print $4 " libres sur " $2}')"
+}
+
+apply_wallpaper() {
+    [ -f "$WALLPAPER" ] || {
+        echo "Wallpaper introuvable: $WALLPAPER"
+        return 1
+    }
+    command -v gsettings >/dev/null 2>&1 || {
+        echo "gsettings est indisponible."
+        return 1
+    }
+
+    gsettings set org.gnome.desktop.background picture-uri "file://$WALLPAPER"
+    gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALLPAPER"
+    gsettings set org.gnome.desktop.background picture-options "zoom"
+    gsettings set org.gnome.desktop.screensaver picture-uri "file://$WALLPAPER"
+    echo "Wallpaper AtomeOS applique."
+}
+
+run_gui() {
+    while true; do
+        choice="$(zenity --list --title="$TITLE" --width=560 --height=430 \
+            --text="Smart by default, private by design." \
+            --column="Action" --column="Description" \
+            "Assistant local" "Poser une question avec Ollama" \
+            "Assistant vocal" "Demarrer ou arreter l'ecoute locale: atomeos" \
+            "Mode simple" "Profil leger pour usage quotidien" \
+            "Mode dev" "Active VS Code, outils dev, terminal ameliore et Docker" \
+            "Profil Student" "Outils pour etudes et documents" \
+            "Profil Creator" "Outils creation image, audio, video" \
+            "Wallpaper" "Appliquer le fond d'ecran AtomeOS" \
+            "Statut systeme" "Voir les informations de la machine" \
+            "Nettoyage" "Nettoyer le cache apt" \
+            "Infos AtomeOS" "Version, slogan et build" \
+            "Quitter" "Fermer le centre" \
+            2>/dev/null || true)"
+
+        case "$choice" in
+            "Assistant local")
+                question="$(zenity --entry --title="$TITLE" --text="Question pour l'assistant local:" 2>/dev/null || true)"
+                [ -n "$question" ] && atome-ai ask "$question" | zenity --text-info --title="Assistant Atome" --width=720 --height=520
+                ;;
+            "Assistant vocal")
+                voice_choice="$(zenity --list --title="Assistant vocal AtomeOS" --width=460 --height=260 \
+                    --column="Action" --column="Description" \
+                    "Activer" "Demarrer maintenant et au prochain login" \
+                    "Desactiver" "Couper l'ecoute et le demarrage auto" \
+                    "Demarrer" "Ecouter seulement pour cette session" \
+                    "Arreter" "Couper l'ecoute pour cette session" \
+                    "Statut" "Voir si l'assistant vocal tourne" \
+                    2>/dev/null || true)"
+                case "$voice_choice" in
+                    "Activer")
+                        atome-voice enable | zenity --text-info --title="Assistant vocal" --width=560 --height=220
+                        ;;
+                    "Desactiver")
+                        atome-voice disable | zenity --text-info --title="Assistant vocal" --width=560 --height=220
+                        ;;
+                    "Demarrer")
+                        atome-voice start | zenity --text-info --title="Assistant vocal" --width=520 --height=220
+                        ;;
+                    "Arreter")
+                        atome-voice stop | zenity --text-info --title="Assistant vocal" --width=520 --height=220
+                        ;;
+                    "Statut")
+                        atome-voice status | zenity --text-info --title="Assistant vocal" --width=520 --height=220
+                        ;;
+                esac
+                ;;
+            "Mode simple")
+                pkexec atome-profile lightweight
+                ;;
+            "Mode dev")
+                pkexec atome-profile developer
+                ;;
+            "Profil Student")
+                pkexec atome-profile student
+                ;;
+            "Profil Creator")
+                pkexec atome-profile creator
+                ;;
+            "Wallpaper")
+                apply_wallpaper | zenity --text-info --title="Wallpaper AtomeOS" --width=520 --height=220
+                ;;
+            "Statut systeme"|"Infos AtomeOS")
+                info_text | zenity --text-info --title="$choice" --width=640 --height=420
+                ;;
+            "Nettoyage")
+                pkexec apt-get clean
+                zenity --info --title="$TITLE" --text="Nettoyage termine."
+                ;;
+            "Quitter"|"")
+                exit 0
+                ;;
+        esac
+    done
+}
+
+run_tui() {
+    cat <<'EOF'
+Centre Atome
+Smart by default, private by design.
+
+Commandes utiles:
+  ask "question"
+  explain "sudo apt update"
+  atome-voice start
+  atome-voice stop
+  atome-center
+  sudo atome-profile lightweight
+  sudo atome-profile student
+  sudo atome-profile creator
+  sudo atome-profile developer
+EOF
+    echo
+    info_text
+}
+
+if has_gui; then
+    run_gui
+else
+    run_tui
+fi

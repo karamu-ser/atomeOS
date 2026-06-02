@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=AtomeOS Voice Assistant
+Comment=Start the local voice assistant when enabled
+Exec=atome-voice autostart
+OnlyShowIn=GNOME;XFCE;KDE;LXDE;LXQt;MATE;Unity;
+X-GNOME-Autostart-enabled=true

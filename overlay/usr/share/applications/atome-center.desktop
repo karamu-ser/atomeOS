@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Centre Atome
+Comment=Configure AtomeOS
+Exec=atome-center
+Icon=preferences-system
+Terminal=false
+Categories=System;Settings;

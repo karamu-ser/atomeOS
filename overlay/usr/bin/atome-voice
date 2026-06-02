@@ -1,0 +1,378 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+WAKE_WORD="${ATOME_WAKE_WORD:-atomeos}"
+WAKE_PHRASE="${ATOME_WAKE_PHRASE:-atom}"
+KWS_THRESHOLD="${ATOME_KWS_THRESHOLD:-1e-10}"
+REPLY="${ATOME_VOICE_REPLY:-How can I help you?}"
+COMMAND_TIMEOUT="${ATOME_COMMAND_TIMEOUT:-7}"
+PID_DIR="$HOME/.cache/atomeos"
+PID_FILE="$PID_DIR/voice.pid"
+LOG_FILE="$PID_DIR/voice.log"
+CONFIG_DIR="$HOME/.config/atomeos"
+ENABLE_FILE="$CONFIG_DIR/voice-enabled"
+
+usage() {
+    cat <<'EOF'
+Usage:
+  atome-voice start
+  atome-voice stop
+  atome-voice force-stop
+  atome-voice enable
+  atome-voice disable
+  atome-voice status
+  atome-voice autostart
+  atome-voice test-say
+  atome-voice listen
+  atome-voice debug
+  atome-voice logs
+  atome-voice run
+
+Default wake word:
+  atomeos
+
+Recognition hint:
+  Say it like "atom OS". Internally the recognizer listens for "atom".
+EOF
+}
+
+say() {
+    local text="$1"
+    if command -v espeak-ng >/dev/null 2>&1; then
+        espeak-ng "$text"
+    elif command -v espeak >/dev/null 2>&1; then
+        espeak "$text"
+    elif command -v spd-say >/dev/null 2>&1; then
+        spd-say "$text"
+    else
+        echo "$text"
+    fi
+}
+
+recognizer() {
+    if command -v pocketsphinx_continuous >/dev/null 2>&1; then
+        pocketsphinx_continuous -inmic yes -keyphrase "$WAKE_PHRASE" -kws_threshold "$KWS_THRESHOLD"
+    elif command -v pocketsphinx >/dev/null 2>&1; then
+        pocketsphinx live "$WAKE_PHRASE"
+    else
+        echo "pocketsphinx n'est pas installe. Installez le profil AtomeOS ou relancez le build."
+        exit 1
+    fi
+}
+
+command_recognizer() {
+    if command -v pocketsphinx_continuous >/dev/null 2>&1; then
+        timeout "$COMMAND_TIMEOUT" pocketsphinx_continuous -inmic yes 2>&1 || true
+    elif command -v pocketsphinx >/dev/null 2>&1; then
+        timeout "$COMMAND_TIMEOUT" pocketsphinx live 2>&1 || true
+    else
+        echo "pocketsphinx n'est pas installe."
+        return 1
+    fi
+}
+
+full_recognizer() {
+    if command -v pocketsphinx_continuous >/dev/null 2>&1; then
+        pocketsphinx_continuous -inmic yes 2>&1
+    elif command -v pocketsphinx >/dev/null 2>&1; then
+        pocketsphinx live 2>&1
+    else
+        echo "pocketsphinx n'est pas installe."
+        return 1
+    fi
+}
+
+open_browser() {
+    if command -v google-chrome >/dev/null 2>&1; then
+        nohup google-chrome >/dev/null 2>&1 &
+    elif command -v google-chrome-stable >/dev/null 2>&1; then
+        nohup google-chrome-stable >/dev/null 2>&1 &
+    elif command -v chromium >/dev/null 2>&1; then
+        nohup chromium >/dev/null 2>&1 &
+    elif command -v chromium-browser >/dev/null 2>&1; then
+        nohup chromium-browser >/dev/null 2>&1 &
+    elif command -v xdg-open >/dev/null 2>&1; then
+        nohup xdg-open https://www.google.com >/dev/null 2>&1 &
+    else
+        return 1
+    fi
+}
+
+open_terminal() {
+    for terminal in gnome-terminal konsole xfce4-terminal mate-terminal xterm; do
+        if command -v "$terminal" >/dev/null 2>&1; then
+            nohup "$terminal" >/dev/null 2>&1 &
+            return 0
+        fi
+    done
+    return 1
+}
+
+open_files() {
+    if command -v xdg-open >/dev/null 2>&1; then
+        nohup xdg-open "$HOME" >/dev/null 2>&1 &
+    else
+        return 1
+    fi
+}
+
+handle_command() {
+    local command_text="$1"
+    local lower
+    lower="$(printf '%s' "$command_text" | tr '[:upper:]' '[:lower:]')"
+
+    case "$lower" in
+        *"open chrome"*|*"open chromium"*|*"chrome"*|*"chromium"*|*"browser"*)
+            if open_browser; then
+                say "Opening Chrome."
+            else
+                say "I could not find a browser."
+            fi
+            ;;
+        *"open terminal"*|*"terminal"*)
+            if open_terminal; then
+                say "Opening terminal."
+            else
+                say "I could not find a terminal."
+            fi
+            ;;
+        *"open files"*|*"file manager"*|*"home folder"*)
+            if open_files; then
+                say "Opening files."
+            else
+                say "I could not open files."
+            fi
+            ;;
+        *"open atome"*|*"atome center"*|*"atome centre"*)
+            nohup atome-center >/dev/null 2>&1 &
+            say "Opening Atome Center."
+            ;;
+        *)
+            say "I heard you, but I do not know that command yet."
+            echo "Unknown command: $command_text"
+            ;;
+    esac
+}
+
+listen_for_command() {
+    echo "Listening for command during ${COMMAND_TIMEOUT}s..."
+    say "$REPLY"
+
+    local output command_text
+    output="$(command_recognizer)"
+    printf '%s\n' "$output"
+
+    command_text="$(printf '%s\n' "$output" \
+        | sed '/^INFO:/d;/^Current configuration:/d;/^\[/d;/^[[:space:]]*$/d' \
+        | tail -n 1)"
+
+    if [ -z "$command_text" ]; then
+        say "I did not hear a command."
+        return 0
+    fi
+
+    echo "Command heard: $command_text"
+    handle_command "$command_text"
+}
+
+is_running() {
+    [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" >/dev/null 2>&1
+}
+
+has_voice_process() {
+    pgrep -u "$(id -u)" -f "atome-voice run" >/dev/null 2>&1 || \
+        pgrep -u "$(id -u)" -f "pocketsphinx_continuous .*keyphrase" >/dev/null 2>&1
+}
+
+start_voice() {
+    mkdir -p "$PID_DIR"
+    if is_running || has_voice_process; then
+        echo "Assistant vocal deja actif."
+        exit 0
+    fi
+
+    nohup atome-voice run >>"$LOG_FILE" 2>&1 &
+    echo "$!" >"$PID_FILE"
+    echo "Assistant vocal actif. Dites: $WAKE_WORD"
+}
+
+enable_voice() {
+    mkdir -p "$CONFIG_DIR"
+    printf 'enabled\n' >"$ENABLE_FILE"
+    start_voice
+}
+
+disable_voice() {
+    rm -f "$ENABLE_FILE"
+    stop_voice
+}
+
+stop_voice() {
+    if is_running; then
+        pkill -P "$(cat "$PID_FILE")" >/dev/null 2>&1 || true
+        kill "$(cat "$PID_FILE")" >/dev/null 2>&1 || true
+        rm -f "$PID_FILE"
+        echo "Assistant vocal arrete."
+    else
+        rm -f "$PID_FILE"
+        echo "Assistant vocal deja arrete."
+    fi
+}
+
+force_stop_voice() {
+    rm -f "$PID_FILE"
+    pkill -u "$(id -u)" -f "atome-voice run" >/dev/null 2>&1 || true
+    pkill -u "$(id -u)" -f "pocketsphinx_continuous .*keyphrase" >/dev/null 2>&1 || true
+    echo "Tous les processus assistant vocal AtomeOS ont ete arretes."
+}
+
+status_voice() {
+    if is_running || has_voice_process; then
+        if [ -f "$ENABLE_FILE" ]; then
+            echo "Assistant vocal actif et active au demarrage. Dites: $WAKE_WORD"
+        else
+            echo "Assistant vocal actif pour cette session seulement. Dites: $WAKE_WORD"
+        fi
+    else
+        if [ -f "$ENABLE_FILE" ]; then
+            echo "Assistant vocal active au demarrage, mais inactif maintenant."
+        else
+            echo "Assistant vocal inactif."
+        fi
+    fi
+}
+
+autostart_voice() {
+    [ -f "$ENABLE_FILE" ] || exit 0
+    start_voice >/dev/null 2>&1 || true
+}
+
+run_voice() {
+    mkdir -p "$PID_DIR"
+    local armed=0
+    echo "AtomeOS voice assistant started. Wake word: $WAKE_WORD. Say: atom OS, then a command."
+    say "AtomeOS voice assistant is ready."
+
+    full_recognizer | while IFS= read -r line; do
+        echo "heard: $line"
+        case "$line" in
+            INFO:*|"Current configuration:"|\[*|"")
+                continue
+                ;;
+        esac
+
+        lower="$(printf '%s' "$line" | tr '[:upper:]' '[:lower:]')"
+
+        if [ "$armed" = "1" ]; then
+            echo "Command heard: $line"
+            handle_command "$line"
+            armed=0
+            continue
+        fi
+
+        case "$lower" in
+            *"$WAKE_WORD"*|*"$WAKE_PHRASE"*|*"atom os"*|*"atom"*)
+                echo "Wake word detected: $line"
+                say "$REPLY"
+                armed=1
+                ;;
+        esac
+    done
+}
+
+debug_voice() {
+    echo "[1] Test sortie vocale"
+    say "$REPLY"
+    echo
+    echo "[2] Micro detecte par ALSA"
+    if command -v arecord >/dev/null 2>&1; then
+        arecord -l || true
+    else
+        echo "arecord absent. Installez alsa-utils."
+    fi
+    echo
+    echo "[3] Ecoute directe. Dites: atom OS"
+    echo "Quand le mot est detecte, dites ensuite: open chrome"
+    echo "Appuyez sur Ctrl+C pour arreter."
+    local armed=0
+    full_recognizer | while IFS= read -r line; do
+        echo "$line"
+        case "$line" in
+            INFO:*|"Current configuration:"|\[*|"")
+                continue
+                ;;
+        esac
+
+        lower="$(printf '%s' "$line" | tr '[:upper:]' '[:lower:]')"
+
+        if [ "$armed" = "1" ]; then
+            echo "Command heard: $line"
+            handle_command "$line"
+            armed=0
+            continue
+        fi
+
+        case "$lower" in
+            *"$WAKE_WORD"*|*"$WAKE_PHRASE"*|*"atom os"*|*"atom"*)
+                echo "Wake word detected: $line"
+                say "$REPLY"
+                armed=1
+                ;;
+        esac
+    done
+}
+
+show_logs() {
+    if [ -f "$LOG_FILE" ]; then
+        tail -n 80 "$LOG_FILE"
+    else
+        echo "Aucun log: $LOG_FILE"
+    fi
+}
+
+case "${1:-}" in
+    start)
+        start_voice
+        ;;
+    stop)
+        stop_voice
+        ;;
+    force-stop)
+        force_stop_voice
+        ;;
+    enable)
+        enable_voice
+        ;;
+    disable)
+        disable_voice
+        ;;
+    status)
+        status_voice
+        ;;
+    autostart)
+        autostart_voice
+        ;;
+    test-say)
+        say "$REPLY"
+        ;;
+    listen)
+        recognizer
+        ;;
+    debug)
+        debug_voice
+        ;;
+    logs)
+        show_logs
+        ;;
+    run)
+        run_voice
+        ;;
+    ""|-h|--help|help)
+        usage
+        ;;
+    *)
+        echo "Commande inconnue: $1"
+        usage
+        exit 1
+        ;;
+esac

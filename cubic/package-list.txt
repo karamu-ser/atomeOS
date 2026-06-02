@@ -1,9 +1,58 @@
-plank
-git
+# --- core tools ---
 curl
 wget
+git
 vim
+nano
 htop
-neofetch
+btop
+fastfetch
+tree
+unzip
+zip
+p7zip-full
+tar
+rsync
+
+# --- terminal / shell ---
+zsh
+fzf
+tmux
+ripgrep
+fd-find
+bat
+eza
+
+# --- network / debug ---
+net-tools
+nmap
+openssl
+ca-certificates
+gnupg
+software-properties-common
+apt-transport-https
+
+# --- desktop / daily use ---
 vlc
+gimp
+plank
 gnome-tweaks
+flatpak
+zenity
+alsa-utils
+pocketsphinx
+pocketsphinx-en-us
+espeak-ng
+speech-dispatcher
+
+# --- build essentials ---
+build-essential
+cmake
+pkg-config
+python3
+python3-pip
+python3-venv
+
+# --- dev basics ---
+nodejs
+npm

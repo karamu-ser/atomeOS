@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MARKER="$HOME/.config/atomeos/first-run.done"
+TITLE="Bienvenue dans AtomeOS"
+WALLPAPER="/usr/share/backgrounds/atomeos/default.png"
+
+[ -f "$MARKER" ] && exit 0
+
+mkdir -p "$(dirname "$MARKER")"
+
+apply_wallpaper() {
+    [ -f "$WALLPAPER" ] || return 0
+    command -v gsettings >/dev/null 2>&1 || return 0
+
+    gsettings set org.gnome.desktop.background picture-uri "file://$WALLPAPER" >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALLPAPER" >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.background picture-options "zoom" >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.screensaver picture-uri "file://$WALLPAPER" >/dev/null 2>&1 || true
+}
+
+apply_wallpaper
+
+if command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    zenity --info --title="$TITLE" --width=460 \
+        --text="Smart by default, private by design.\n\nChoisissez votre profil de depart. Vous pourrez changer ensuite dans le Centre Atome."
+
+    profile="$(zenity --list --radiolist --title="$TITLE" --width=520 --height=300 \
+        --column="" --column="Profil" --column="Description" \
+        TRUE "lightweight" "Usage quotidien leger" \
+        FALSE "student" "Documents, etudes, organisation" \
+        FALSE "creator" "Image, audio, video" \
+        FALSE "developer" "Git, Node, Python, Docker, terminal" \
+        2>/dev/null || true)"
+
+    if [ -n "$profile" ]; then
+        pkexec atome-profile "$profile" || true
+    fi
+
+    ai_choice="$(zenity --question --title="$TITLE" --text="Activer l'assistant local offline maintenant ?\nModele: llama3.2:1b" 2>/dev/null; echo $?)"
+    if [ "$ai_choice" = "0" ]; then
+        atome-ai ask "Dis bonjour et presente AtomeOS en deux phrases." | zenity --text-info --title="Assistant Atome" --width=720 --height=420 || true
+    fi
+
+    voice_choice="$(zenity --question --title="$TITLE" --text="Activer l'assistant vocal local ?\nQuand vous dites: atomeos\nIl repond: How can I help you?" 2>/dev/null; echo $?)"
+    if [ "$voice_choice" = "0" ]; then
+        atome-voice enable || true
+    fi
+
+    atome-center &
+else
+    echo "Bienvenue dans AtomeOS"
+    echo "Lancez atome-center pour configurer le systeme."
+fi
+
+date -u +%Y-%m-%dT%H:%M:%SZ >"$MARKER"

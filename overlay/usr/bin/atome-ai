@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODEL="${ATOME_AI_MODEL:-llama3.2:1b}"
+
+usage() {
+    cat <<'EOF'
+Usage:
+  atome-ai ask "question"
+  atome-ai explain "commande Linux"
+  atome-ai summarize /chemin/fichier
+
+Aliases:
+  ask "question"
+  explain "commande Linux"
+EOF
+}
+
+need_ollama() {
+    if ! command -v ollama >/dev/null 2>&1; then
+        echo "Ollama n'est pas installe. Lancez atome-center ou installez Ollama."
+        exit 1
+    fi
+}
+
+run_prompt() {
+    local prompt="$1"
+    need_ollama
+
+    if ! ollama list 2>/dev/null | awk '{print $1}' | grep -Fxq "$MODEL"; then
+        echo "Modele $MODEL absent. Telechargement..."
+        ollama pull "$MODEL"
+    fi
+
+    ollama run "$MODEL" "$prompt"
+}
+
+mode="${1:-}"
+shift || true
+
+case "$mode" in
+    ask)
+        [ "$#" -gt 0 ] || { usage; exit 1; }
+        run_prompt "Reponds en francais, clairement et brievement. Question: $*"
+        ;;
+    explain)
+        [ "$#" -gt 0 ] || { usage; exit 1; }
+        run_prompt "Explique cette commande Linux en francais, avec les risques importants et un exemple si utile: $*"
+        ;;
+    summarize)
+        file="${1:-}"
+        [ -n "$file" ] && [ -f "$file" ] || { usage; exit 1; }
+        run_prompt "Resume ce fichier en francais avec les points importants: $(sed -n '1,220p' "$file")"
+        ;;
+    ""|-h|--help|help)
+        usage
+        ;;
+    *)
+        run_prompt "Reponds en francais, clairement et brievement. Question: $mode $*"
+        ;;
+esac

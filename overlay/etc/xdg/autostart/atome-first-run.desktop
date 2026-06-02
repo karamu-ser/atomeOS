@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=AtomeOS First Run
+Comment=Configure AtomeOS on first login
+Exec=atome-first-run
+OnlyShowIn=GNOME;XFCE;KDE;LXDE;LXQt;MATE;Unity;
+X-GNOME-Autostart-enabled=true
