@@ -1,35 +1,48 @@
-# Architecture
+# Architecture AtomeOS (v0.2 Pro / Strong)
 
-## Structure
-- `cubic/package-list.txt` : paquets installés pendant la personnalisation Cubic.
-- `scripts/chroot-setup.sh` : script principal à lancer dans le chroot.
-- `overlay/` : fichiers copiés dans le système final.
-- `branding/` : ressources visuelles sources.
+## Structure du Projet
+- `cubic/package-list.txt` : liste des paquets APT installes dans Cubic (outils coeur, terminal, monitoring, IA, bureau).
+- `cubic/notes.md` : guide de generation de l'image ISO.
+- `cubic/removals.txt` : paquets purges pour optimiser la taille et supprimer le tracking.
+- `cubic/post-customization.sh` : validations d'integrite post-build.
+- `scripts/chroot-setup.sh` : script d'installation principal a executer dans le chroot Cubic.
+- `scripts/build-info.sh` : utilitaire d'inspection de version et d'environnement.
+- `scripts/cleanup.sh` : nettoyage des caches et logs pour finaliser l'ISO.
+- `scripts/install-dev-mode.sh` : activation rapide du mode developpement et pro.
+- `overlay/` : arborescence copiee directement a la racine du systeme.
+- `branding/` : fonds d'ecran et identite visuelle.
 
-## Wallpaper
-- `overlay/usr/share/backgrounds/atomeos/default.png` : fond d'écran installé.
-- `overlay/usr/share/gnome-background-properties/atomeos.xml` : déclaration dans la liste GNOME.
-- `overlay/usr/share/glib-2.0/schemas/90_atomeos-wallpaper.gschema.override` : fond par défaut GNOME.
+## Composants de l'Assistant IA Local (`atome-ai`)
+L'assistant est articule autour de plusieurs couches :
+1. **Module de Detection Materielle (`recommend_model`, `get_ram_mb`, `has_gpu`)** :
+   - RAM < 6 GB : modele Ultra-leger (`llama3.2:1b`).
+   - 6 GB <= RAM < 12 GB : modele Standard (`llama3.2:3b`).
+   - RAM >= 12 GB ou GPU dedie : modeles Pro / Fort (`llama3.1:8b`, `qwen2.5:7b`, `mistral:7b`, `deepseek-r1:8b`).
+2. **Couche de Configuration** :
+   - Fichier utilisateur : `~/.config/atomeos/ai.conf`.
+   - Fichier systeme : `/etc/atomeos/ai.conf`.
+   - Variable d'environnement : `ATOME_AI_MODEL`.
+3. **Moteur d'Execution** :
+   - S'appuie sur le daemon `ollama` local. Demarre le service en tache de fond si inactif.
+   - Telecharge et verifie le modele demande a la volee ou en pre-chargement.
+4. **Commandes et Points d'Entree** :
+   - `atome-ai chat` : session interactive multi-tour en terminal.
+   - `ask "..."` : Q&R rapide en langage naturel.
+   - `explain "..."` : decryptage technique et analyse de securite des commandes Linux.
+   - `code-ai "..."` : generation de code source et scripts.
+   - `fix-ai "..."` : diagnostic de messages d'erreur et commandes de depannage.
+   - `atome-ai summarize <file>` : synthese automatique de documents.
+   - `atome-ai models` / `set-model` : selection et gestion des modeles.
+   - `atome-ai hardware` : diagnostic en direct CPU, RAM, GPU et Ollama.
 
-## Overlay smart
-- `overlay/usr/bin/atome-ai` : wrapper Ollama pour l'assistant local.
-- `overlay/usr/bin/atome-voice` : assistant vocal local avec mot-clé `atomeos`.
-- `overlay/usr/bin/ask` : raccourci pour poser une question.
-- `overlay/usr/bin/explain` : raccourci pour expliquer une commande.
-- `overlay/usr/bin/atome-profile` : installation des profils prêts.
-- `overlay/usr/bin/atome-center` : centre de configuration graphique ou texte.
-- `overlay/usr/bin/atome-first-run` : assistant de premier démarrage.
-- `overlay/etc/xdg/autostart/atome-first-run.desktop` : lancement automatique au premier login.
-- `overlay/etc/xdg/autostart/atome-voice.desktop` : démarrage automatique de l'assistant vocal si l'utilisateur l'a activé.
-- `overlay/etc/profile.d/atome-ai.sh` : fonctions shell `ask` et `explain`.
+## Composants Graphiques et Vocaux
+- `overlay/usr/bin/atome-center` : panneau de controle Zenity (GUI) et terminal (TUI) offrant un acces unifie a l'assistant, aux profils, aux modeles IA et a l'etat du systeme.
+- `overlay/usr/bin/atome-voice` : assistant vocal fonctionnant en local avec PocketSphinx. Il ecoute le mot d'activation (*"atom OS"* / *"atomeos"*), execute des actions systeme et peut relayer des questions a l'assistant IA (`ask ...`, `open chat`).
+- `overlay/usr/bin/atome-first-run` : premier demarrage avec proposition intelligente du profil et du tier IA selon le materiel detecte.
 
-## Build
-Le script chroot :
-1. met à jour les paquets ;
-2. installe la liste en ignorant les commentaires ;
-3. copie l'overlay avec `rsync` ;
-4. compile les schemas GNOME pour appliquer les defaults ;
-5. installe Ollama sauf si `ATOME_SKIP_OLLAMA=1` ;
-6. tente de précharger `llama3.2:1b` ;
-7. écrit `/etc/atomeos-release` ;
-8. nettoie le cache apt.
+## Profils Systeme (`atome-profile`)
+- `pro` / `strong` : outils de developpement intensif, monitoring avance (`nvtop`, `btop`, `iotop`, `sysstat`), Docker, VS Code et telechargement du tier IA superieur.
+- `developer` : outils de base du developpeur (Git, Node, Python, Docker, terminal moderne).
+- `lightweight` : base minimale optimisee pour la rapidite.
+- `student` : suite bureautique, PDF et organisation.
+- `creator` : montage video, retouche photo et traitement audio.

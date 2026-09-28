@@ -2,7 +2,7 @@
 set -euo pipefail
 
 MARKER="$HOME/.config/atomeos/first-run.done"
-TITLE="Bienvenue dans AtomeOS"
+TITLE="Bienvenue dans AtomeOS v0.2 Pro"
 WALLPAPER="/usr/share/backgrounds/atomeos/default.png"
 
 [ -f "$MARKER" ] && exit 0
@@ -21,25 +21,41 @@ apply_wallpaper() {
 
 apply_wallpaper
 
-if command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
-    zenity --info --title="$TITLE" --width=460 \
-        --text="Smart by default, private by design.\n\nChoisissez votre profil de depart. Vous pourrez changer ensuite dans le Centre Atome."
+get_recommended_ai() {
+    local mem_kb ram_mb
+    mem_kb="$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+    ram_mb=$(( mem_kb / 1024 ))
+    if [ "$ram_mb" -ge 12000 ]; then
+        echo "llama3.1:8b (Tier Pro)"
+    elif [ "$ram_mb" -ge 6000 ]; then
+        echo "llama3.2:3b (Tier Standard)"
+    else
+        echo "llama3.2:1b (Tier Ultra-leger)"
+    fi
+}
 
-    profile="$(zenity --list --radiolist --title="$TITLE" --width=520 --height=300 \
+if command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    rec_ai="$(get_recommended_ai)"
+
+    zenity --info --title="$TITLE" --width=520 \
+        --text="Smart by default, private by design.\n\nBienvenue dans AtomeOS v0.2 Pro / Strong.\nChoisissez votre profil de depart. Vous pourrez le modifier a tout moment dans le Centre Atome."
+
+    profile="$(zenity --list --radiolist --title="$TITLE" --width=560 --height=340 \
         --column="" --column="Profil" --column="Description" \
-        TRUE "lightweight" "Usage quotidien leger" \
-        FALSE "student" "Documents, etudes, organisation" \
-        FALSE "creator" "Image, audio, video" \
-        FALSE "developer" "Git, Node, Python, Docker, terminal" \
+        TRUE "lightweight" "Usage quotidien leger & rapide" \
+        FALSE "developer" "Dev: Git, Node, Python, Docker, terminal" \
+        FALSE "pro" "Pro / Strong: Dev intensif, monitoring & IA forte" \
+        FALSE "student" "Bureautique, documents, etudes, organisation" \
+        FALSE "creator" "Creation: Image, audio, video" \
         2>/dev/null || true)"
 
     if [ -n "$profile" ]; then
         pkexec atome-profile "$profile" || true
     fi
 
-    ai_choice="$(zenity --question --title="$TITLE" --text="Activer l'assistant local offline maintenant ?\nModele: llama3.2:1b" 2>/dev/null; echo $?)"
+    ai_choice="$(zenity --question --title="$TITLE" --text="Activer l'assistant local intelligent prive maintenant ?\nModele optimal detecte pour votre machine : $rec_ai" 2>/dev/null; echo $?)"
     if [ "$ai_choice" = "0" ]; then
-        atome-ai ask "Dis bonjour et presente AtomeOS en deux phrases." | zenity --text-info --title="Assistant Atome" --width=720 --height=420 || true
+        atome-ai ask "Dis bonjour et presente AtomeOS v0.2 Pro en deux phrases claires." | zenity --text-info --title="Assistant Atome" --width=720 --height=420 || true
     fi
 
     voice_choice="$(zenity --question --title="$TITLE" --text="Activer l'assistant vocal local ?\nDites: atomeos ou atom OS\nIl repond: How can I help you?" 2>/dev/null; echo $?)"
@@ -49,7 +65,7 @@ if command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" 
 
     atome-center &
 else
-    echo "Bienvenue dans AtomeOS"
+    echo "Bienvenue dans AtomeOS v0.2 Pro / Strong"
     echo "Lancez atome-center pour configurer le systeme."
 fi
 

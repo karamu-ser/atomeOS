@@ -1,0 +1,9 @@
+# Paquets a desinstaller dans Cubic pour alleger l'ISO
+# telemetrie / tracking
+popularity-contest
+ubuntu-report
+# jeux par defaut (optionnel)
+aisleriot
+gnome-mahjongg
+gnome-mines
+gnome-sudoku

@@ -6,10 +6,11 @@ profile="${1:-}"
 usage() {
     cat <<'EOF'
 Usage:
-  sudo atome-profile lightweight
-  sudo atome-profile student
-  sudo atome-profile creator
-  sudo atome-profile developer
+  sudo atome-profile pro         (ou strong: developpement intensif, monitoring & IA forte)
+  sudo atome-profile developer   (git, dev tools, docker, snap code)
+  sudo atome-profile lightweight (outils legers du quotidien)
+  sudo atome-profile student     (bureautique, documents, etudes)
+  sudo atome-profile creator     (creation graphique, video, audio)
 EOF
 }
 
@@ -48,6 +49,25 @@ case "$profile" in
             echo "Snap est absent: installation automatique de VS Code ignoree."
         fi
         systemctl enable docker >/dev/null 2>&1 || true
+        ;;
+    pro|strong)
+        install_packages git vim nano zsh fzf tmux ripgrep fd-find bat eza build-essential cmake pkg-config python3 python3-pip python3-venv nodejs npm docker.io htop btop iotop sysstat nvtop
+        if command -v snap >/dev/null 2>&1; then
+            snap install code --classic || echo "VS Code n'a pas pu etre installe maintenant. Verifiez la connexion puis relancez sudo atome-profile pro."
+        else
+            echo "Snap est absent: installation automatique de VS Code ignoree."
+        fi
+        systemctl enable docker >/dev/null 2>&1 || true
+
+        # If Ollama is present, pull the optimal strong model
+        if command -v atome-ai >/dev/null 2>&1 && command -v ollama >/dev/null 2>&1; then
+            echo "[+] Profil Pro / Strong: Verification du modele IA..."
+            rec_model="$(atome-ai hardware 2>/dev/null | awk '/Tier recommande/ {print $NF}' || echo "")"
+            if [ -n "$rec_model" ]; then
+                echo "[+] Telechargement du modele recommande : $rec_model"
+                ollama pull "$rec_model" || true
+            fi
+        fi
         ;;
     *)
         echo "Profil inconnu: $profile"

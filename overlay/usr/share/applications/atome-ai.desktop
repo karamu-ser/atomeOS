@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Assistant IA Atome
+Comment=Assistant IA local intelligent et prive
+Exec=x-terminal-emulator -e atome-ai chat
+Icon=help-browser
+Terminal=false
+Categories=System;Utility;Development;
+Keywords=AI;Assistant;Ollama;Llama;Chat;

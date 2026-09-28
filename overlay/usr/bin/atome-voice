@@ -147,6 +147,37 @@ handle_command() {
             nohup atome-center >/dev/null 2>&1 &
             say "Opening Atome Center."
             ;;
+        *"ask "*|*"question "*)
+            local q
+            q="$(printf '%s' "$command_text" | sed -E 's/^[aA][sS][kK][[:space:]]+//;s/^[qQ][uU][eE][sS][tT][iI][oO][nN][[:space:]]+//')"
+            if [ -n "$q" ]; then
+                say "Asking Atome AI."
+                local answer
+                answer="$(atome-ai ask "$q" 2>/dev/null | head -n 2 | tr '\n' ' ' | sed 's/[*#_`]/ /g')"
+                if [ -n "$answer" ]; then
+                    say "$answer"
+                else
+                    say "I could not get an answer from the local assistant."
+                fi
+            else
+                say "Please specify your question."
+            fi
+            ;;
+        *"ai chat"*|*"open chat"*|*"chat"*)
+            for term in gnome-terminal x-terminal-emulator konsole xfce4-terminal xterm; do
+                if command -v "$term" >/dev/null 2>&1; then
+                    nohup "$term" -e atome-ai chat >/dev/null 2>&1 &
+                    say "Opening AI chat session."
+                    return 0
+                fi
+            done
+            say "Could not launch terminal for AI chat."
+            ;;
+        *"ai model"*|*"what model"*)
+            local cur_model
+            cur_model="$(atome-ai hardware 2>/dev/null | awk '/Modele actif/ {print $NF}' || echo "")"
+            say "The active AI model is ${cur_model:-unknown}."
+            ;;
         *)
             say "I heard you, but I do not know that command yet."
             echo "Unknown command: $command_text"

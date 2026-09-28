@@ -1,75 +1,102 @@
-# AtomeOS
+# AtomeOS - v0.2 Pro / Strong
 
-AtomeOS is a modern Ubuntu-based Linux distribution built with Cubic.
+AtomeOS is a modern, high-performance Ubuntu-based Linux distribution built with Cubic.
 
 **Smart by default, private by design.**
 
-AtomeOS focuses on a clean desktop experience, useful default tools, and local-first AI features. The goal is to provide a simple operating system for daily use while keeping enough power for developers, students, and creators.
+AtomeOS delivers a clean desktop experience, robust developer and creator profiles, and a state-of-the-art **local-first AI assistant** that adapts to your hardware without sending your personal data to external clouds.
+
+---
 
 ## Highlights
 
-- **Ubuntu base**: familiar, stable, and compatible with common Linux software.
-- **Atome Center**: a lightweight control center for profiles, system status, cleanup, wallpaper, and AI shortcuts.
-- **Local AI assistant**: `ask`, `explain`, and `atome-ai` use Ollama when available.
-- **Voice assistant**: say “atom OS”, then give a command such as “open chrome”.
-- **First-run setup**: guided profile selection on first login.
-- **Ready profiles**: `lightweight`, `student`, `creator`, and `developer`.
-- **AtomeOS wallpaper**: installed, declared in GNOME, and applied by default.
+- **Ubuntu base**: Familiar, stable, and compatible with the broader Debian/Ubuntu ecosystem.
+- **Dynamic Hardware & AI Auto-detection**: Automatically checks CPU, RAM, and GPU to configure the optimal local AI model (from 1B up to 8B parameters).
+- **Strong Local AI Assistant**: Powered by Ollama with support for `llama3.1:8b`, `qwen2.5:7b`, `mistral:7b`, `deepseek-r1:8b`, `llama3.2:3b`, and `llama3.2:1b`.
+- **Integrated AI Tool Suite**:
+  - `atome-ai chat`: Interactive multi-turn terminal conversation.
+  - `ask`: Quick natural language question answering.
+  - `explain`: Linux command and script safety analyzer.
+  - `code-ai`: Code and shell script generation.
+  - `fix-ai`: Diagnostic and fix suggestions for errors and broken commands.
+  - `atome-ai summarize`: Document and file summarizer.
+  - `atome-ai models` & `set-model`: Model catalog, switching, and management.
+- **Atome Center**: Graphical & TUI control center for AI models, system status, hardware diagnostics, profiles, wallpaper, and voice assistant.
+- **Voice Assistant**: Say “atom OS”, then ask questions, launch AI chat, or control apps locally using PocketSphinx.
+- **Ready Profiles**: `pro` (Strong / High-Performance), `developer`, `lightweight`, `student`, and `creator`.
 
-## System Requirements
+---
 
-Minimum:
+## System Requirements & AI Tiers
 
-- 64-bit CPU, 2 cores
-- 4 GB RAM
-- 20 GB storage
-- Linux-compatible graphics
-- Microphone for the voice assistant
+| Tier | RAM | Recommended Model | Use Case |
+|---|---|---|---|
+| **Ultra-Lightweight** | 4 GB | `llama3.2:1b` | Netbooks, older laptops, low-resource VMs |
+| **Standard / Balanced**| 6 - 8 GB | `llama3.2:3b` | Everyday productivity, documentation |
+| **Pro / Strong** | 12 - 16+ GB or GPU | `llama3.1:8b`, `qwen2.5:7b`, `mistral:7b`, `deepseek-r1:8b` | Intensive coding, reasoning, advanced analysis |
 
-Recommended:
+### Hardware Requirements
+- **Minimum**: 64-bit dual-core CPU, 4 GB RAM, 25 GB storage.
+- **Recommended (Pro / Strong)**: 64-bit quad-core+ CPU, 12+ GB RAM (or dedicated NVIDIA/AMD GPU), 50 GB SSD.
 
-- 64-bit CPU, 4 cores
-- 8 GB RAM
-- 40 GB SSD
-- Internet connection for model downloads and optional tools
-- Microphone, built-in or USB
+---
 
-For local AI, `llama3.2:1b` is the target model for v0.1. It can run on modest hardware, but 8 GB RAM is recommended for a smoother experience.
+## Features & Usage
 
-## Features
+### 1. Atome Center
 
-### Atome Center
-
-Run:
+Launch the control center:
 
 ```bash
 atome-center
 ```
 
-Atome Center provides quick access to:
+Provides graphical (Zenity) or terminal (TUI) access to:
+- Interactive AI chat and question answering
+- Switching AI models (1B / 3B / 8B / Qwen / Mistral / DeepSeek)
+- Hardware & AI tier diagnostics
+- Voice assistant controls
+- System profiles (`pro`, `developer`, `student`, `creator`, `lightweight`)
+- Wallpaper and desktop customization
+- System cleanup and release information
 
-- assistant tools
-- voice assistant controls
-- beginner and developer modes
-- student and creator profiles
-- system status
-- wallpaper setup
-- apt cache cleanup
-- AtomeOS build information
+### 2. Local AI Assistant (`atome-ai`)
 
-### Local AI Assistant
-
-AtomeOS includes terminal helpers for local AI workflows:
+Test hardware detection and model recommendation:
 
 ```bash
-ask "comment installer docker ?"
-explain "sudo apt update"
-atome-ai summarize ./notes.txt
+atome-ai hardware
 ```
 
-The assistant uses Ollama and the `llama3.2:1b` model when available. If the model is missing, the helper attempts to pull it.
+List supported models and check active selection:
 
-### Voice Assistant
+```bash
+atome-ai models
+```
+
+Switch active model:
+
+```bash
+atome-ai set-model llama3.1:8b
+```
+
+Launch an interactive conversation:
+
+```bash
+atome-ai chat
+```
+
+Quick terminal shortcuts:
+
+```bash
+ask "comment configurer un reverse proxy nginx ?"
+explain "iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080"
+code-ai "ecris un script python qui surveille l'espace disque et alerte"
+fix-ai "error: failed to push some refs to 'git@github.com:...'"
+atome-ai summarize ./rapport.txt
+```
+
+### 3. Voice Assistant (`atome-voice`)
 
 Enable the voice assistant:
 
@@ -77,149 +104,117 @@ Enable the voice assistant:
 atome-voice enable
 ```
 
-Wake phrase:
+Wake phrase: **"atom OS"** or **"atomeos"**
 
-```text
-atom OS
-```
+Examples:
+- *"atom OS"* &rarr; *"How can I help you?"* &rarr; *"open terminal"*
+- *"atom OS"* &rarr; *"How can I help you?"* &rarr; *"open chrome"*
+- *"atom OS"* &rarr; *"How can I help you?"* &rarr; *"ask how do I update packages"*
+- *"atom OS"* &rarr; *"How can I help you?"* &rarr; *"open chat"*
+- *"atom OS"* &rarr; *"How can I help you?"* &rarr; *"what model"*
 
-Example flow:
-
-```text
-User: atom OS
-AtomeOS: How can I help you?
-User: open chrome
-```
-
-Useful commands:
+Control commands:
 
 ```bash
 atome-voice status
+atome-voice test-say
 atome-voice debug
-atome-voice logs
 atome-voice disable
 ```
 
-Current supported voice actions:
+### 4. Profiles (`atome-profile`)
 
-- `open chrome`
-- `open terminal`
-- `open files`
-- `open atome center`
-
-### Profiles
-
-Install a profile:
+Apply ready-made system profiles:
 
 ```bash
+# Pro / Strong profile: Heavy dev stack, performance monitoring (btop, nvtop, iotop), and strong AI
+sudo atome-profile pro
+
+# Developer profile: Git, Node.js, Python, Docker, build tools, VS Code
 sudo atome-profile developer
+
+# Lightweight profile: Daily essentials and fast utilities
+sudo atome-profile lightweight
+
+# Student & Creator profiles:
+sudo atome-profile student
+sudo atome-profile creator
 ```
 
-Available profiles:
-
-- `lightweight`: daily-use essentials
-- `student`: documents, study, and organization tools
-- `creator`: image, audio, video, and media tools
-- `developer`: Git, Node.js, Python, Docker, terminal tools, and optional VS Code via Snap
+---
 
 ## Repository Structure
 
 ```text
 atomeos/
-├── branding/              # Source visual assets
-├── cubic/                 # Cubic package and customization notes
-├── docs/                  # Vision, roadmap, and architecture
-├── overlay/               # Files copied into the final OS
+├── branding/              # Source visual assets and wallpapers
+├── cubic/                 # Cubic customization package list, notes, and removals
+│   ├── notes.md           # Step-by-step Cubic build tutorial
+│   ├── package-list.txt   # APT packages installed in Cubic
+│   ├── post-customization.sh # Post-build validation script
+│   └── removals.txt       # Unnecessary packages purged from ISO
+├── docs/                  # Architecture, roadmap, and vision
+│   ├── architecture.md
+│   ├── roadmap.md
+│   └── vision.md
+├── overlay/               # Files copied directly into root filesystem of the OS
+│   ├── etc/               # Profile scripts and autostart entries
+│   └── usr/               # Executables, desktop entries, wallpaper schemas
 ├── releases/              # Release notes and changelog
-└── scripts/               # Build and chroot helper scripts
+│   └── changelog.md
+└── scripts/               # Build, cleanup, and helper scripts
+    ├── build-info.sh      # Environment and build version inspector
+    ├── chroot-setup.sh    # Main setup script executed in Cubic chroot
+    ├── cleanup.sh         # ISO cleanup script
+    └── install-dev-mode.sh # One-step developer & pro setup
 ```
 
-Important files:
+---
 
-- `scripts/chroot-setup.sh`: main Cubic chroot setup script
-- `cubic/package-list.txt`: package list installed during customization
-- `overlay/usr/bin/atome-center`: Atome Center launcher
-- `overlay/usr/bin/atome-ai`: local AI wrapper
-- `overlay/usr/bin/atome-voice`: local voice assistant
-- `overlay/usr/share/backgrounds/atomeos/default.png`: default wallpaper
+## Building AtomeOS with Cubic
 
-## Build Notes
-
-AtomeOS is designed to be built inside a Cubic chroot.
-
-Typical flow:
-
-1. Open the Ubuntu ISO in Cubic.
-2. Copy `cubic/package-list.txt` to `/tmp/package-list.txt` inside the chroot.
-3. Copy `overlay/` to `/tmp/overlay` inside the chroot.
+1. Open your Ubuntu 24.04 Desktop ISO in **Cubic**.
+2. Copy `cubic/package-list.txt` to `/tmp/package-list.txt` in chroot.
+3. Copy `overlay/` to `/tmp/overlay` in chroot.
 4. Run:
 
 ```bash
 bash /path/to/scripts/chroot-setup.sh
 ```
 
-The setup script:
-
-- updates apt metadata
-- installs packages while ignoring comments in `package-list.txt`
-- copies the overlay with `rsync`
-- compiles GNOME schema overrides
-- installs Ollama unless disabled
-- attempts to preload `llama3.2:1b`
-- writes `/etc/atomeos-release`
-- cleans apt cache
-
-To skip Ollama during a build:
+To optionally force preloading a specific model during the ISO build:
 
 ```bash
-ATOME_SKIP_OLLAMA=1 bash scripts/chroot-setup.sh
+ATOME_PRELOAD_MODEL="llama3.1:8b" bash scripts/chroot-setup.sh
 ```
 
-## Testing
+5. Run `bash scripts/cleanup.sh` before generating the ISO.
 
-Check scripts:
+---
+
+## Testing & Validation
+
+Validate shell scripts:
 
 ```bash
-bash -n scripts/chroot-setup.sh
-bash -n overlay/usr/bin/atome-ai
-bash -n overlay/usr/bin/atome-center
-bash -n overlay/usr/bin/atome-profile
-bash -n overlay/usr/bin/atome-voice
+bash -n scripts/*.sh
+bash -n overlay/usr/bin/*
 ```
 
-Test the wallpaper after boot:
+Inspect build environment:
 
 ```bash
-gsettings get org.gnome.desktop.background picture-uri
+./scripts/build-info.sh
 ```
 
-Expected path:
-
-```text
-file:///usr/share/backgrounds/atomeos/default.png
-```
-
-Test voice output:
+Test hardware detection & models:
 
 ```bash
-atome-voice test-say
+./overlay/usr/bin/atome-ai hardware
+./overlay/usr/bin/atome-ai models
 ```
 
-Test voice recognition:
-
-```bash
-atome-voice debug
-```
-
-## Privacy
-
-AtomeOS is designed around local-first behavior. The AI assistant runs locally when Ollama and the model are installed. The voice assistant uses local speech recognition with PocketSphinx and does not require a cloud service.
-
-Network access is still required for package installation, optional tools, and downloading AI models.
-
-## Status
-
-AtomeOS is currently in early v0.1 development. The current focus is a functional custom ISO with a clean identity, useful defaults, local AI helpers, and a simple configuration center.
+---
 
 ## License
 

@@ -1,16 +1,19 @@
-# Vision
+# Vision AtomeOS
 
-AtomeOS est une distribution Ubuntu personnalisée qui doit rester simple, élégante et utile dès le premier démarrage.
+AtomeOS est une distribution Linux moderne concue pour allier simplicitée visuelle, puissance pour les developpeurs et intelligence locale.
 
-Son idée principale :
+Sa devise fondatrice :
 
 **Smart by default, private by design.**
 
-L'intelligence du système doit aider l'utilisateur sans l'obliger à envoyer ses données vers un service externe. Le premier assistant est donc local, basé sur Ollama, avec un petit modèle capable de répondre à des questions, résumer des fichiers simples et expliquer des commandes Linux.
+## Philosophie de l'IA AtomeOS
+L'intelligence du systeme doit operer au service direct de l'utilisateur, tout en garantissant une confidentialite absolue :
+- **Zero fuite de donnees** : les modeles de langage s'executent en local sur la machine via Ollama.
+- **Adaptabilite materielle** : le systeme detecte les capacites reelles de la machine (RAM, processeur, carte graphique dediee) pour selectionner ou recommander le tier de modele adapte, allant de modeles ultra-legers (1B) jusqu'aux modeles de pointe (8B et 7B parametres).
+- **Integration native a l'OS** : l'IA n'est pas un gadget isole dans un navigateur, elle est integree aux terminaux (`ask`, `explain`, `code-ai`, `fix-ai`, `atome-ai chat`), au bureau graphique (Centre Atome) et a la voix (Assistant vocal local).
 
-## Principes
-- Interface simple pour les débutants.
-- Outils solides pour les développeurs.
-- Profils prêts à l'emploi selon l'usage.
-- IA locale quand c'est possible.
-- Système compréhensible, modifiable et reproductible.
+## Principes directeurs
+- **Privilegie le local** : pas de compte obligatoire, pas d'API externe requise, pas de tracking.
+- **Tiering intelligent** : du netbook d'etudiant a la station de travail IA / GPU, l'experience s'adapte sans effort.
+- **Outils solides pour createurs & developpeurs** : profils clairs, gestion fine de Docker, VS Code, et monitoring avance.
+- **Systeme transparent et reproductible** : scripts clairs, audibles et personnalisables via Cubic.

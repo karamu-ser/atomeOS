@@ -6,6 +6,9 @@ vim
 nano
 htop
 btop
+nvtop
+iotop
+sysstat
 fastfetch
 tree
 unzip

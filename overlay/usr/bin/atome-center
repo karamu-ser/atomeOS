@@ -1,11 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TITLE="Centre Atome"
+TITLE="Centre Atome - v0.2 Pro / Strong"
 WALLPAPER="/usr/share/backgrounds/atomeos/default.png"
 
 has_gui() {
     command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]
+}
+
+launch_terminal_cmd() {
+    local cmd="$1"
+    for term in gnome-terminal x-terminal-emulator konsole xfce4-terminal mate-terminal alacritty kitty xterm; do
+        if command -v "$term" >/dev/null 2>&1; then
+            case "$term" in
+                gnome-terminal)
+                    "$term" -- bash -c "$cmd; echo; read -rp 'Appuyez sur Entree pour fermer...' " >/dev/null 2>&1 &
+                    return 0
+                    ;;
+                x-terminal-emulator|xfce4-terminal|mate-terminal|xterm)
+                    "$term" -e bash -c "$cmd; echo; read -rp 'Appuyez sur Entree pour fermer...' " >/dev/null 2>&1 &
+                    return 0
+                    ;;
+                konsole)
+                    "$term" -e bash -c "$cmd; echo; read -rp 'Appuyez sur Entree pour fermer...' " >/dev/null 2>&1 &
+                    return 0
+                    ;;
+                alacritty|kitty)
+                    "$term" -e bash -c "$cmd; echo; read -rp 'Appuyez sur Entree pour fermer...' " >/dev/null 2>&1 &
+                    return 0
+                    ;;
+            esac
+        fi
+    done
+    return 1
 }
 
 info_text() {
@@ -14,7 +41,8 @@ info_text() {
         cat "$release"
     else
         echo 'NAME="AtomeOS"'
-        echo 'VERSION="dev"'
+        echo 'VERSION="0.2"'
+        echo 'EDITION="Pro / Strong"'
         echo 'SLOGAN="Smart by default, private by design."'
     fi
     echo
@@ -22,6 +50,19 @@ info_text() {
     echo "CPU: $(nproc) coeur(s)"
     echo "RAM: $(free -h | awk '/Mem:/ {print $2}')"
     echo "Disk /: $(df -h / | awk 'NR==2 {print $4 " libres sur " $2}')"
+    echo
+    local atome_ai_bin
+    atome_ai_bin="$(command -v atome-ai 2>/dev/null || true)"
+    if [ -z "$atome_ai_bin" ] && [ -x "/usr/bin/atome-ai" ]; then
+        atome_ai_bin="/usr/bin/atome-ai"
+    elif [ -z "$atome_ai_bin" ] && [ -x "$(dirname "$0")/atome-ai" ]; then
+        atome_ai_bin="$(dirname "$0")/atome-ai"
+    fi
+
+    if [ -n "$atome_ai_bin" ] && [ -x "$atome_ai_bin" ]; then
+        echo "--- Assistant IA Local ---"
+        "$atome_ai_bin" hardware
+    fi
 }
 
 apply_wallpaper() {
@@ -38,40 +79,88 @@ apply_wallpaper() {
     gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALLPAPER"
     gsettings set org.gnome.desktop.background picture-options "zoom"
     gsettings set org.gnome.desktop.screensaver picture-uri "file://$WALLPAPER"
-    echo "Wallpaper AtomeOS applique."
+    echo "Wallpaper AtomeOS applique avec succes."
+}
+
+select_ai_model_gui() {
+    local choice
+    choice="$(zenity --list --radiolist --title="Configuration Modele IA - AtomeOS Pro" --width=620 --height=340 \
+        --text="Choisissez le modele d'intelligence artificielle locale :" \
+        --column="" --column="Modele" --column="Profil & RAM" \
+        FALSE "llama3.2:1b" "Ultra-leger (4 GB RAM) - Netbooks / machines modestes" \
+        FALSE "llama3.2:3b" "Equilibre (6-8 GB RAM) - Quotidien & bureautique" \
+        FALSE "llama3.1:8b" "Pro / Fort (12-16 GB RAM) - Polyvalent & tres performant" \
+        FALSE "qwen2.5:7b" "Pro / Fort (12-16 GB RAM) - Excellent en code et logique" \
+        FALSE "mistral:7b" "Pro / Fort (12-16 GB RAM) - Synthese et raisonnement" \
+        FALSE "deepseek-r1:8b" "Pro / Raisonnement avance (12-16 GB RAM)" \
+        TRUE "auto" "Auto-detection optimale selon votre materiel" \
+        2>/dev/null || true)"
+
+    if [ -n "$choice" ]; then
+        if [ "$choice" = "auto" ]; then
+            rm -f "${HOME:-/root}/.config/atomeos/ai.conf"
+            zenity --info --title="$TITLE" --text="Modele configure sur l'auto-detection materielle."
+        else
+            atome-ai set-model "$choice"
+            zenity --info --title="$TITLE" --text="Modele IA actif defini sur : $choice"
+        fi
+    fi
 }
 
 run_gui() {
     while true; do
-        choice="$(zenity --list --title="$TITLE" --width=560 --height=430 \
-            --text="Smart by default, private by design." \
+        choice="$(zenity --list --title="$TITLE" --width=620 --height=500 \
+            --text="Smart by default, private by design. (Edition Pro / Strong)" \
             --column="Action" --column="Description" \
-            "Assistant local" "Poser une question avec Ollama" \
-            "Assistant vocal" "Ecoute locale: dites atomeos ou atom OS" \
-            "Mode simple" "Profil leger pour usage quotidien" \
-            "Mode dev" "Active VS Code, outils dev, terminal ameliore et Docker" \
+            "Chat IA Interactif" "Lancer une session de conversation avec l'IA locale" \
+            "Poser une question" "Question rapide a l'assistant (ask)" \
+            "Generer du code" "Assistant programmation (code-ai)" \
+            "Modele IA & Tier" "Changer de modele (1B, 3B, 8B, Qwen, DeepSeek)" \
+            "Statut IA & Materiel" "Diagnostic CPU, RAM, GPU et Ollama" \
+            "Assistant vocal" "Controle vocal local: 'atomeos' ou 'atom OS'" \
+            "Mode Pro / Strong" "Outils haute performance, dev intensif & monitoring" \
+            "Mode Developpeur" "VS Code, Git, Docker, Node, Python, terminal" \
+            "Mode Simple" "Profil leger pour usage quotidien" \
             "Profil Student" "Outils pour etudes et documents" \
             "Profil Creator" "Outils creation image, audio, video" \
-            "Wallpaper" "Appliquer le fond d'ecran AtomeOS" \
-            "Statut systeme" "Voir les informations de la machine" \
-            "Nettoyage" "Nettoyer le cache apt" \
-            "Infos AtomeOS" "Version, slogan et build" \
+            "Wallpaper" "Re-appliquer le fond d'ecran AtomeOS" \
+            "Statut systeme" "Voir les informations completes de la machine" \
+            "Nettoyage" "Nettoyer le cache apt et paquets orphelins" \
+            "Infos AtomeOS" "Version, slogan, edition et build" \
             "Quitter" "Fermer le centre" \
             2>/dev/null || true)"
 
         case "$choice" in
-            "Assistant local")
+            "Chat IA Interactif")
+                if ! launch_terminal_cmd "atome-ai chat"; then
+                    # Fallback if no terminal emulator can be opened
+                    question="$(zenity --entry --title="Chat AtomeOS" --text="Entrez votre message:" 2>/dev/null || true)"
+                    [ -n "$question" ] && atome-ai ask "$question" | zenity --text-info --title="Assistant Atome" --width=740 --height=520
+                fi
+                ;;
+            "Poser une question")
                 question="$(zenity --entry --title="$TITLE" --text="Question pour l'assistant local:" 2>/dev/null || true)"
-                [ -n "$question" ] && atome-ai ask "$question" | zenity --text-info --title="Assistant Atome" --width=720 --height=520
+                [ -n "$question" ] && atome-ai ask "$question" | zenity --text-info --title="Assistant Atome" --width=740 --height=520
+                ;;
+            "Generer du code")
+                code_req="$(zenity --entry --title="$TITLE" --text="Description du code a generer (ex: script bash de backup):" 2>/dev/null || true)"
+                [ -n "$code_req" ] && atome-ai code "$code_req" | zenity --text-info --title="Assistant Code Atome" --width=780 --height=540
+                ;;
+            "Modele IA & Tier")
+                select_ai_model_gui
+                ;;
+            "Statut IA & Materiel")
+                atome-ai hardware | zenity --text-info --title="Statut IA & Materiel" --width=680 --height=460
                 ;;
             "Assistant vocal")
-                voice_choice="$(zenity --list --title="Assistant vocal AtomeOS" --width=460 --height=260 \
+                voice_choice="$(zenity --list --title="Assistant vocal AtomeOS" --width=480 --height=280 \
                     --column="Action" --column="Description" \
                     "Activer" "Demarrer maintenant et au prochain login" \
                     "Desactiver" "Couper l'ecoute et le demarrage auto" \
                     "Demarrer" "Ecouter seulement pour cette session" \
                     "Arreter" "Couper l'ecoute pour cette session" \
                     "Statut" "Voir si l'assistant vocal tourne" \
+                    "Tester voix" "Tester la synthese vocale" \
                     2>/dev/null || true)"
                 case "$voice_choice" in
                     "Activer")
@@ -89,13 +178,19 @@ run_gui() {
                     "Statut")
                         atome-voice status | zenity --text-info --title="Assistant vocal" --width=520 --height=220
                         ;;
+                    "Tester voix")
+                        atome-voice test-say | zenity --text-info --title="Assistant vocal" --width=520 --height=220
+                        ;;
                 esac
                 ;;
-            "Mode simple")
-                pkexec atome-profile lightweight
+            "Mode Pro / Strong")
+                pkexec atome-profile pro
                 ;;
-            "Mode dev")
+            "Mode Developpeur")
                 pkexec atome-profile developer
+                ;;
+            "Mode Simple")
+                pkexec atome-profile lightweight
                 ;;
             "Profil Student")
                 pkexec atome-profile student
@@ -107,7 +202,7 @@ run_gui() {
                 apply_wallpaper | zenity --text-info --title="Wallpaper AtomeOS" --width=520 --height=220
                 ;;
             "Statut systeme"|"Infos AtomeOS")
-                info_text | zenity --text-info --title="$choice" --width=640 --height=420
+                info_text | zenity --text-info --title="$choice" --width=680 --height=480
                 ;;
             "Nettoyage")
                 pkexec apt-get clean
@@ -122,19 +217,30 @@ run_gui() {
 
 run_tui() {
     cat <<'EOF'
-Centre Atome
-Smart by default, private by design.
+==================================================================
+  Centre Atome - v0.2 Pro / Strong
+  Smart by default, private by design.
+==================================================================
 
-Commandes utiles:
-  ask "question"
-  explain "sudo apt update"
-  atome-voice start
-  atome-voice stop
-  atome-center
-  sudo atome-profile lightweight
-  sudo atome-profile student
-  sudo atome-profile creator
-  sudo atome-profile developer
+Commandes IA & Productivite:
+  ask "question"                 Poser une question directe
+  explain "commande"             Decortiquer une commande Linux
+  code-ai "prompt"               Generer du code ou script
+  fix-ai "erreur"                Diagnostiquer et corriger une erreur
+  atome-ai chat                  Session de chat interactive
+  atome-ai models                Lister les modeles disponibles
+  atome-ai set-model <nom>       Changer de modele (ex: llama3.1:8b)
+  atome-ai hardware              Diagnostic RAM, GPU et Tier IA
+
+Commandes Systeme & Profils:
+  atome-center                   Lancer ce centre
+  atome-voice start|stop|status  Controle de l'assistant vocal
+  sudo atome-profile pro         Profil Pro / Strong (haute performance)
+  sudo atome-profile developer   Profil Developpeur
+  sudo atome-profile lightweight Profil Simple / Leger
+  sudo atome-profile student     Profil Student
+  sudo atome-profile creator     Profil Creator
+==================================================================
 EOF
     echo
     info_text

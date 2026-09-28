@@ -1,38 +1,237 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODEL="${ATOME_AI_MODEL:-llama3.2:1b}"
+CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME:-/root}/.config}/atomeos"
+CONFIG_FILE="$CONFIG_DIR/ai.conf"
+SYS_CONFIG_FILE="/etc/atomeos/ai.conf"
+
+# Read user or system configuration if present
+if [ -f "$CONFIG_FILE" ]; then
+    # shellcheck source=/dev/null
+    source "$CONFIG_FILE"
+elif [ -f "$SYS_CONFIG_FILE" ]; then
+    # shellcheck source=/dev/null
+    source "$SYS_CONFIG_FILE"
+fi
+
+get_ram_mb() {
+    local mem_kb
+    mem_kb="$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+    echo $(( mem_kb / 1024 ))
+}
+
+has_gpu() {
+    if command -v nvidia-smi >/dev/null 2>&1; then
+        return 0
+    elif lspci 2>/dev/null | grep -iE 'vga|3d|display' | grep -iqE 'nvidia|amd|radeon'; then
+        return 0
+    fi
+    return 1
+}
+
+recommend_model() {
+    local ram_mb
+    ram_mb="$(get_ram_mb)"
+    if [ "$ram_mb" -ge 12000 ]; then
+        echo "llama3.1:8b"
+    elif [ "$ram_mb" -ge 6000 ]; then
+        echo "llama3.2:3b"
+    else
+        echo "llama3.2:1b"
+    fi
+}
+
+# Determine active model
+MODEL="${ATOME_AI_MODEL:-$(recommend_model)}"
 
 usage() {
     cat <<'EOF'
-Usage:
-  atome-ai ask "question"
-  atome-ai explain "commande Linux"
-  atome-ai summarize /chemin/fichier
+AtomeOS Local AI Assistant - v0.2 Pro / Strong
+Smart by default, private by design.
 
-Aliases:
+Usage:
+  atome-ai ask "question"             Poser une question directe
+  atome-ai explain "commande Linux"   Explication detaillee d'une commande
+  atome-ai code "demande de code"     Generer un script ou snippet de code
+  atome-ai fix "erreur ou commande"   Diagnostiquer et corriger une erreur
+  atome-ai summarize /chemin/fichier  Resumer un document ou fichier texte
+  atome-ai chat                       Lancer une session de chat interactive
+  atome-ai models                     Lister les modeles recommandes et installes
+  atome-ai set-model <nom_modele>     Definir le modele par defaut
+  atome-ai pull <nom_modele>          Telecharger un modele via Ollama
+  atome-ai hardware                   Verifier la RAM, le GPU et le tier IA
+
+Raccourcis disponibles:
   ask "question"
-  explain "commande Linux"
+  explain "commande"
+  code-ai "prompt"
+  fix-ai "erreur"
 EOF
 }
 
 need_ollama() {
     if ! command -v ollama >/dev/null 2>&1; then
-        echo "Ollama n'est pas installe. Lancez atome-center ou installez Ollama."
+        echo "[!] Ollama n'est pas installe. Lancez le Centre Atome ou installez Ollama (curl -fsSL https://ollama.com/install.sh | sh)." >&2
         exit 1
+    fi
+    # Verify Ollama service is reachable, or attempt to start it
+    if ! ollama list >/dev/null 2>&1; then
+        echo "[i] Demarrage du service Ollama..." >&2
+        if command -v systemctl >/dev/null 2>&1 && systemctl is-active ollama >/dev/null 2>&1; then
+            :
+        else
+            nohup ollama serve >/dev/null 2>&1 &
+            sleep 2
+        fi
+    fi
+}
+
+ensure_model() {
+    local target_model="$1"
+    need_ollama
+    if ! ollama list 2>/dev/null | awk '{print $1}' | grep -Fxq "$target_model"; then
+        echo "[i] Modele '$target_model' absent localement."
+        echo "[+] Telechargement en cours..."
+        ollama pull "$target_model"
     fi
 }
 
 run_prompt() {
     local prompt="$1"
-    need_ollama
+    local system_prompt="${2:-}"
+    ensure_model "$MODEL"
 
-    if ! ollama list 2>/dev/null | awk '{print $1}' | grep -Fxq "$MODEL"; then
-        echo "Modele $MODEL absent. Telechargement..."
-        ollama pull "$MODEL"
+    if [ -n "$system_prompt" ]; then
+        # When system prompt is supplied, use Ollama run with combined instructions
+        ollama run "$MODEL" "System: $system_prompt\n\nUser: $prompt"
+    else
+        ollama run "$MODEL" "$prompt"
+    fi
+}
+
+show_hardware() {
+    local ram_mb ram_gb rec_model gpu_info
+    ram_mb="$(get_ram_mb)"
+    ram_gb="$(awk "BEGIN {printf \"%.1f\", $ram_mb/1024}")"
+    rec_model="$(recommend_model)"
+
+    if has_gpu; then
+        if command -v nvidia-smi >/dev/null 2>&1; then
+            gpu_info="$(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null || echo 'NVIDIA GPU detecte')"
+        else
+            gpu_info="$(lspci 2>/dev/null | grep -iE 'vga|3d|display' | head -n 1 | cut -d ':' -f3 | sed 's/^[ \t]*//' || echo 'GPU detecte')"
+        fi
+    else
+        gpu_info="Aucun GPU dedie detecte (mode CPU)"
     fi
 
-    ollama run "$MODEL" "$prompt"
+    echo "==========================================="
+    echo "  AtomeOS AI - Diagnostic Materiel & Tier  "
+    echo "==========================================="
+    echo "CPU Coeurs       : $(nproc)"
+    echo "RAM Totale       : ${ram_gb} GB (${ram_mb} MB)"
+    echo "Acceleration GPU : $gpu_info"
+    echo "Tier recommande  : $rec_model"
+    echo "Modele actif     : $MODEL"
+    echo
+
+    if command -v ollama >/dev/null 2>&1; then
+        echo "Statut Ollama    : Installe ($(ollama --version 2>/dev/null || echo 'OK'))"
+        echo
+        echo "Modeles installes localement:"
+        ollama list 2>/dev/null || echo "  (aucun pour le moment)"
+    else
+        echo "Statut Ollama    : Non installe"
+    fi
+    echo "==========================================="
+}
+
+list_models() {
+    local rec_model
+    rec_model="$(recommend_model)"
+    echo "=========================================================================="
+    echo "  Modeles AtomeOS recommandes (Tier Materiel & Performance)              "
+    echo "=========================================================================="
+    printf "%-18s | %-12s | %-10s | %-24s\n" "Modele" "RAM Min" "Taille" "Usage recommande"
+    echo "--------------------------------------------------------------------------"
+    printf "%-18s | %-12s | %-10s | %-24s\n" "llama3.2:1b" "4 GB" "~1.3 GB" "Ultra-leger / Netbooks"
+    printf "%-18s | %-12s | %-10s | %-24s\n" "llama3.2:3b" "6-8 GB" "~2.0 GB" "Standard / Usage quotidien"
+    printf "%-18s | %-12s | %-10s | %-24s\n" "llama3.1:8b" "12-16 GB" "~4.7 GB" "Pro / Fort / Polyvalent"
+    printf "%-18s | %-12s | %-10s | %-24s\n" "qwen2.5:7b" "12-16 GB" "~4.5 GB" "Pro / Code & Raisonnement"
+    printf "%-18s | %-12s | %-10s | %-24s\n" "mistral:7b" "12-16 GB" "~4.1 GB" "Pro / Synthese & Logique"
+    printf "%-18s | %-12s | %-10s | %-24s\n" "deepseek-r1:8b" "12-16 GB" "~4.9 GB" "Pro / Raisonnement avance"
+    echo "=========================================================================="
+    echo "Modele actuellement actif : $MODEL"
+    echo "Modele optimal conseille  : $rec_model"
+    echo
+    echo "Pour changer le modele actif :"
+    echo "  atome-ai set-model <nom_modele>"
+}
+
+set_model() {
+    local new_model="${1:-}"
+    if [ -z "$new_model" ]; then
+        echo "Usage: atome-ai set-model <nom_modele>" >&2
+        exit 1
+    fi
+    if ! mkdir -p "$CONFIG_DIR" 2>/dev/null; then
+        echo "[!] Erreur: impossible d'ecrire dans $CONFIG_DIR (permission refusee ou lecture seule)." >&2
+        exit 1
+    fi
+    cat >"$CONFIG_FILE" <<EOF
+# AtomeOS AI Configuration
+ATOME_AI_MODEL="$new_model"
+EOF
+    echo "[+] Modele actif enregistre: $new_model"
+    echo "    Fichier: $CONFIG_FILE"
+}
+
+start_chat() {
+    ensure_model "$MODEL"
+    echo "============================================================"
+    echo "  Session Chat AtomeOS (Modele: $MODEL)                    "
+    echo "  Tapez '/exit' ou Ctrl+C pour quitter, '/help' pour l'aide "
+    echo "============================================================"
+    echo
+
+    local input
+    while true; do
+        printf "atome-ai (%s) > " "$MODEL"
+        if ! IFS= read -r input; then
+            echo
+            break
+        fi
+
+        case "$input" in
+            "" )
+                continue
+                ;;
+            /exit|/quit|exit|quit)
+                echo "Fermeture de la session."
+                break
+                ;;
+            /help)
+                echo "Commandes session:"
+                echo "  /exit       Quitter"
+                echo "  /clear      Effacer l'ecran"
+                echo "  /model      Afficher le modele en cours"
+                echo "  /models     Lister les modeles disponibles"
+                ;;
+            /clear)
+                clear
+                ;;
+            /model)
+                echo "Modele actuel : $MODEL"
+                ;;
+            /models)
+                list_models
+                ;;
+            *)
+                run_prompt "$input" "Tu es l'assistant personnel integre a AtomeOS v0.2 Pro. Reponds de maniere precise, claire, en francais, avec une mise en forme lisible. Sois utile et bienveillant."
+                echo
+                ;;
+        esac
+    done
 }
 
 mode="${1:-}"
@@ -41,21 +240,47 @@ shift || true
 case "$mode" in
     ask)
         [ "$#" -gt 0 ] || { usage; exit 1; }
-        run_prompt "Reponds en francais, clairement et brievement. Question: $*"
+        run_prompt "$*" "Tu es l'assistant officiel AtomeOS. Reponds en francais avec concision, clarte et pertinence."
         ;;
     explain)
         [ "$#" -gt 0 ] || { usage; exit 1; }
-        run_prompt "Explique cette commande Linux en francais, avec les risques importants et un exemple si utile: $*"
+        run_prompt "$*" "Tu es un expert Linux AtomeOS. Analyse cette commande, explique son role, decortique ses arguments, signale les risques eventuels (perte de donnees, privileges root) et donne une alternative plus sure si applicable."
+        ;;
+    code)
+        [ "$#" -gt 0 ] || { usage; exit 1; }
+        run_prompt "$*" "Tu es un assistant de programmation AtomeOS Pro. Fournis du code propre, robuste, commenté et fonctionnel sans bavardage superflu. Mentionne les dependances eventuelles et comment executer le code."
+        ;;
+    fix)
+        [ "$#" -gt 0 ] || { usage; exit 1; }
+        run_prompt "$*" "Tu es un assistant de depannage systeme et dev AtomeOS. Analyse cette erreur ou probleme, explique la cause racine et donne la commande ou solution exacte pour resoudre le probleme."
         ;;
     summarize)
         file="${1:-}"
-        [ -n "$file" ] && [ -f "$file" ] || { usage; exit 1; }
-        run_prompt "Resume ce fichier en francais avec les points importants: $(sed -n '1,220p' "$file")"
+        [ -n "$file" ] && [ -f "$file" ] || { echo "Fichier introuvable: ${file:-}"; usage; exit 1; }
+        content="$(head -n 500 "$file")"
+        run_prompt "Voici un extrait du document ($file):\n\n$content\n\nProduis un resume structure en francais soulignant les points cles, decisions et conclusions."
+        ;;
+    chat)
+        start_chat
+        ;;
+    models|list)
+        list_models
+        ;;
+    set-model)
+        set_model "${1:-}"
+        ;;
+    pull)
+        [ "$#" -gt 0 ] || { echo "Usage: atome-ai pull <modele>"; exit 1; }
+        ensure_model "$1"
+        ;;
+    hardware|status|hw)
+        show_hardware
         ;;
     ""|-h|--help|help)
         usage
         ;;
     *)
-        run_prompt "Reponds en francais, clairement et brievement. Question: $mode $*"
+        # Default behavior: treat unknown arguments as a general question
+        run_prompt "$mode $*" "Tu es l'assistant officiel AtomeOS. Reponds en francais avec concision, clarte et pertinence."
         ;;
 esac
